@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Supplier } from '@/types/auth';
@@ -15,8 +15,8 @@ L.Icon.Default.mergeOptions({
 // Custom icons
 const userIcon = new L.DivIcon({
   html: `<div class="relative">
-    <div class="absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary animate-ping opacity-30"></div>
-    <div class="absolute w-4 h-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary border-2 border-white shadow-lg"></div>
+    <div class="absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-500 animate-ping opacity-30"></div>
+    <div class="absolute w-4 h-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-500 border-2 border-white shadow-lg"></div>
   </div>`,
   className: '',
   iconSize: [24, 24],
@@ -24,7 +24,7 @@ const userIcon = new L.DivIcon({
 });
 
 const supplierIcon = new L.DivIcon({
-  html: `<div class="flex items-center justify-center w-8 h-8 -translate-x-1/2 -translate-y-1/2 rounded-lg bg-accent text-white shadow-lg">
+  html: `<div class="flex items-center justify-center w-8 h-8 -translate-x-1/2 -translate-y-1/2 rounded-lg bg-emerald-500 text-white shadow-lg">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
   </div>`,
   className: '',
@@ -47,6 +47,79 @@ function MapUpdater({ center }: { center: [number, number] }) {
   return null;
 }
 
+function UserMarker({ userLocation }: { userLocation: { lat: number; lon: number } }) {
+  return (
+    <Marker position={[userLocation.lat, userLocation.lon]} icon={userIcon}>
+      <Popup>
+        <div className="text-center">
+          <strong style={{ color: '#3b82f6' }}>Your Location</strong>
+          <br />
+          <span style={{ fontSize: '12px', color: '#6b7280' }}>
+            {userLocation.lat.toFixed(6)}, {userLocation.lon.toFixed(6)}
+          </span>
+        </div>
+      </Popup>
+    </Marker>
+  );
+}
+
+function UserCircle({ userLocation }: { userLocation: { lat: number; lon: number } }) {
+  return (
+    <Circle
+      center={[userLocation.lat, userLocation.lon]}
+      radius={20}
+      pathOptions={{
+        color: '#3b82f6',
+        fillColor: '#3b82f6',
+        fillOpacity: 0.1,
+        weight: 2,
+      }}
+    />
+  );
+}
+
+function SupplierMarker({ 
+  supplier, 
+  onSelect 
+}: { 
+  supplier: Supplier; 
+  onSelect: (supplier: Supplier) => void;
+}) {
+  return (
+    <Marker
+      position={[supplier.lat, supplier.lon]}
+      icon={supplierIcon}
+      eventHandlers={{
+        click: () => onSelect(supplier),
+      }}
+    >
+      <Popup>
+        <div className="text-center min-w-[150px]">
+          <strong style={{ color: '#10b981' }}>{supplier.name}</strong>
+          <br />
+          <span style={{ fontSize: '12px', color: '#6b7280' }}>{supplier.address}</span>
+        </div>
+      </Popup>
+    </Marker>
+  );
+}
+
+function SelectedSupplierCircle({ supplier }: { supplier: Supplier }) {
+  return (
+    <Circle
+      center={[supplier.lat, supplier.lon]}
+      radius={20}
+      pathOptions={{
+        color: '#10b981',
+        fillColor: '#10b981',
+        fillOpacity: 0.15,
+        weight: 2,
+        dashArray: '5, 5',
+      }}
+    />
+  );
+}
+
 export function LocationMap({ userLocation, suppliers, selectedSupplier, onSupplierSelect }: LocationMapProps) {
   const defaultCenter: [number, number] = [-1.2921, 36.8219]; // Nairobi
   const center: [number, number] = userLocation 
@@ -66,69 +139,19 @@ export function LocationMap({ userLocation, suppliers, selectedSupplier, onSuppl
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         
-        {userLocation && (
-          <>
-            <MapUpdater center={[userLocation.lat, userLocation.lon]} />
-            <Marker position={[userLocation.lat, userLocation.lon]} icon={userIcon}>
-              <Popup>
-                <div className="text-center">
-                  <strong className="text-primary">Your Location</strong>
-                  <br />
-                  <span className="text-xs text-muted-foreground">
-                    {userLocation.lat.toFixed(6)}, {userLocation.lon.toFixed(6)}
-                  </span>
-                </div>
-              </Popup>
-            </Marker>
-            
-            {/* 20m radius circle around user */}
-            <Circle
-              center={[userLocation.lat, userLocation.lon]}
-              radius={20}
-              pathOptions={{
-                color: 'hsl(217, 91%, 60%)',
-                fillColor: 'hsl(217, 91%, 60%)',
-                fillOpacity: 0.1,
-                weight: 2,
-              }}
-            />
-          </>
-        )}
+        {userLocation ? <MapUpdater center={[userLocation.lat, userLocation.lon]} /> : null}
+        {userLocation ? <UserMarker userLocation={userLocation} /> : null}
+        {userLocation ? <UserCircle userLocation={userLocation} /> : null}
 
-        {/* Supplier markers */}
         {suppliers.map((supplier) => (
-          <Marker
-            key={supplier.id}
-            position={[supplier.lat, supplier.lon]}
-            icon={supplierIcon}
-            eventHandlers={{
-              click: () => onSupplierSelect(supplier),
-            }}
-          >
-            <Popup>
-              <div className="text-center min-w-[150px]">
-                <strong className="text-accent">{supplier.name}</strong>
-                <br />
-                <span className="text-xs text-muted-foreground">{supplier.address}</span>
-              </div>
-            </Popup>
-          </Marker>
+          <SupplierMarker 
+            key={supplier.id} 
+            supplier={supplier} 
+            onSelect={onSupplierSelect} 
+          />
         ))}
 
-        {/* Selected supplier 20m radius */}
-        {selectedSupplier && (
-          <Circle
-            center={[selectedSupplier.lat, selectedSupplier.lon]}
-            radius={20}
-            pathOptions={{
-              color: 'hsl(162, 73%, 46%)',
-              fillColor: 'hsl(162, 73%, 46%)',
-              fillOpacity: 0.15,
-              weight: 2,
-              dashArray: '5, 5',
-            }}
-          />
-        )}
+        {selectedSupplier ? <SelectedSupplierCircle supplier={selectedSupplier} /> : null}
       </MapContainer>
     </div>
   );
